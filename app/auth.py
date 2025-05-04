@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
-from typing import Optional
-from fastapi import Depends, HTTPException, status
+from typing import Optional, List, Callable
+from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
+from functools import wraps
 
 from . import schemas, models, database
 from .config import settings
@@ -67,4 +68,26 @@ def get_current_active_user(current_user = Depends(get_current_user)):
     """Check if the current user is active"""
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+# Novas funções para verificação de roles
+def has_role(roles: List[models.UserRole]):
+    """Decorator to check if user has one of the specified roles"""
+    def dependency(current_user: models.User = Security(get_current_active_user)):
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permissions. Required roles: {[role.value for role in roles]}"
+            )
+        return current_user
+    return dependency
+
+# Helpers específicos para funções comuns
+def admin_only(current_user: models.User = Security(get_current_active_user)):
+    """Check if the current user is an admin"""
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
     return current_user

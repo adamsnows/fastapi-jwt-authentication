@@ -52,7 +52,8 @@ async def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = models.User(
         username=user.username,
         email=user.email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        role=user.role
     )
 
     db.add(db_user)
@@ -93,8 +94,84 @@ async def get_users(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user = Depends(auth.get_current_active_user)
+    current_user = Depends(auth.has_role([models.UserRole.ADMIN, models.UserRole.USER]))
 ):
-    """Get list of all users (requires authentication)"""
+    """Get list of all users (requires authentication with USER or ADMIN role)"""
     users = db.query(models.User).offset(skip).limit(limit).all()
     return users
+
+@app.put("/users/{user_id}/role", response_model=schemas.UserResponse, tags=["Admin"])
+async def update_user_role(
+    user_id: int,
+    role: models.UserRole,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.admin_only)
+):
+    """Update user role (requires Admin privileges)"""
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    db_user.role = role
+    db.commit()
+    db.refresh(db_user)
+
+    return db_user
+
+@app.get("/users/deactivated", response_model=List[schemas.UserResponse], tags=["Admin"])
+async def get_deactivated_users(
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.admin_only)
+):
+    """Get list of all deactivated users (Admin only)"""
+    users = db.query(models.User).filter(models.User.is_active == False).all()
+    return users
+
+@app.put("/users/{user_id}/activate", response_model=schemas.UserResponse, tags=["Admin"])
+async def activate_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.admin_only)
+):
+    """Activate a user (Admin only)"""
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    db_user.is_active = True
+    db.commit()
+    db.refresh(db_user)
+
+    return db_user
+
+@app.put("/users/{user_id}/deactivate", response_model=schemas.UserResponse, tags=["Admin"])
+async def deactivate_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(auth.admin_only)
+):
+    """Deactivate a user (Admin only)"""
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    if current_user.id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot deactivate your own account"
+        )
+
+    db_user.is_active = False
+    db.commit()
+    db.refresh(db_user)
+
+    return db_user
