@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Tuple
 from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from functools import wraps
+import secrets
+import uuid
 
 from . import schemas, models, database
 from .config import settings
@@ -42,6 +43,54 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt, int(expire.timestamp())
+
+def create_refresh_token(user_id: int, db: Session) -> Tuple[str, datetime]:
+    """Create a new refresh token for a user"""
+    # Generate a secure token
+    token_value = secrets.token_hex(32)
+
+    # Set expiration time
+    expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    # Create refresh token record
+    refresh_token = models.RefreshToken(
+        token=token_value,
+        user_id=user_id,
+        expires_at=expires_at
+    )
+
+    # Save to database
+    db.add(refresh_token)
+    db.commit()
+    db.refresh(refresh_token)
+
+    return token_value, expires_at
+
+def get_refresh_token(token: str, db: Session):
+    """Get refresh token from database"""
+    return db.query(models.RefreshToken).filter(
+        models.RefreshToken.token == token,
+        models.RefreshToken.revoked == False,
+        models.RefreshToken.expires_at > datetime.utcnow()
+    ).first()
+
+def revoke_refresh_token(token: str, db: Session):
+    """Revoke a refresh token"""
+    db_token = db.query(models.RefreshToken).filter(models.RefreshToken.token == token).first()
+    if db_token:
+        db_token.revoked = True
+        db.commit()
+        return True
+    return False
+
+def revoke_all_user_refresh_tokens(user_id: int, db: Session):
+    """Revoke all refresh tokens for a user"""
+    db.query(models.RefreshToken).filter(
+        models.RefreshToken.user_id == user_id,
+        models.RefreshToken.revoked == False
+    ).update({models.RefreshToken.revoked: True})
+    db.commit()
+    return True
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
     """Get the current authenticated user from JWT token"""
