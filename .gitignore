@@ -1,0 +1,25 @@
+# database files
+*.db
+*.sqlite3
+
+# python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# virtual environments
+venv/
+env/
+ENV/
+
+# distribution files
+dist/
+build/
+*.egg-info/
+
+# others
+.DS_Store
+.env
+.coverage
+htmlcov/
+.pytest_cache/
