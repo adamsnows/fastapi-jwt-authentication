@@ -79,14 +79,19 @@ app/
 
 2. **Crie e ative um ambiente virtual**:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # Linux/MacOS
-   # ou
-   venv\Scripts\activate     # Windows
+   # Crie um ambiente virtual
+   python3 -m venv venv
+
+   # Ative o ambiente virtual
+   # No macOS/Linux:
+   source venv/bin/activate
+   # No Windows:
+   # venv\Scripts\activate
    ```
 
 3. **Instale as dependências**:
    ```bash
+   # Com o ambiente virtual ativado, instale as dependências
    pip install -r requirements.txt
    ```
 
