@@ -46,20 +46,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 def create_refresh_token(user_id: int, db: Session) -> Tuple[str, datetime]:
     """Create a new refresh token for a user"""
-    # Generate a secure token
     token_value = secrets.token_hex(32)
 
-    # Set expiration time
     expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
-    # Create refresh token record
     refresh_token = models.RefreshToken(
         token=token_value,
         user_id=user_id,
         expires_at=expires_at
     )
 
-    # Save to database
     db.add(refresh_token)
     db.commit()
     db.refresh(refresh_token)
@@ -119,7 +115,6 @@ def get_current_active_user(current_user = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-# Novas funções para verificação de roles
 def has_role(roles: List[models.UserRole]):
     """Decorator to check if user has one of the specified roles"""
     def dependency(current_user: models.User = Security(get_current_active_user)):
@@ -131,7 +126,6 @@ def has_role(roles: List[models.UserRole]):
         return current_user
     return dependency
 
-# Helpers específicos para funções comuns
 def admin_only(current_user: models.User = Security(get_current_active_user)):
     """Check if the current user is an admin"""
     if current_user.role != models.UserRole.ADMIN:
