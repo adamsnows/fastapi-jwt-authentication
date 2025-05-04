@@ -80,8 +80,68 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         expires_delta=access_token_expires
     )
 
-    return {"access_token": access_token, "token_type": "bearer", "expires_at": expires_at}
+    # Generate refresh token
+    refresh_token, _ = auth.create_refresh_token(user.id, db)
 
+    return {"access_token": access_token, "token_type": "bearer", "expires_at": expires_at, "refresh_token": refresh_token}
+
+
+@app.post("/auth/refresh", response_model=schemas.Token, tags=["Authentication"])
+async def refresh_token(refresh_req: schemas.RefreshRequest, db: Session = Depends(get_db)):
+    """Get a new access token using refresh token"""
+    refresh_token = auth.get_refresh_token(refresh_req.refresh_token, db)
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Get user from refresh token
+    user = db.query(models.User).filter(models.User.id == refresh_token.user_id).first()
+    if not user or not user.is_active:
+        # Revoke token if user is not found or not active
+        auth.revoke_refresh_token(refresh_req.refresh_token, db)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User inactive or deleted",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Create new access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token, expires_at = auth.create_access_token(
+        data={"sub": user.username},
+        expires_delta=access_token_expires
+    )
+
+    # Generate new refresh token (rotate tokens for security)
+    new_refresh_token, _ = auth.create_refresh_token(user.id, db)
+
+    # Revoke the old refresh token
+    auth.revoke_refresh_token(refresh_req.refresh_token, db)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_at": expires_at,
+        "refresh_token": new_refresh_token
+    }
+
+
+@app.post("/auth/logout", status_code=status.HTTP_200_OK, tags=["Authentication"])
+async def logout(refresh_req: schemas.RefreshRequest, db: Session = Depends(get_db)):
+    """Logout by revoking the refresh token"""
+    auth.revoke_refresh_token(refresh_req.refresh_token, db)
+    return {"detail": "Successfully logged out"}
+
+
+@app.post("/auth/logout/all", status_code=status.HTTP_200_OK, tags=["Authentication"])
+async def logout_all(current_user = Depends(auth.get_current_active_user), db: Session = Depends(get_db)):
+    """Logout from all devices by revoking all refresh tokens"""
+    auth.revoke_all_user_refresh_tokens(current_user.id, db)
+    return {"detail": "Successfully logged out from all devices"}
 
 @app.get("/users/me", response_model=schemas.UserResponse, tags=["Users"])
 async def get_current_user_info(current_user = Depends(auth.get_current_active_user)):
