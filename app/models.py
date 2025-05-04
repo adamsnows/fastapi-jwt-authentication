@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, Enum, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, Enum, ForeignKey, JSON, Text
 from sqlalchemy.sql import func
 import enum
 from .database import Base
@@ -7,6 +7,17 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
     USER = "user"
     GUEST = "guest"
+
+class AuditLogType(str, enum.Enum):
+    LOGIN = "login"
+    LOGOUT = "logout"
+    REGISTER = "register"
+    PASSWORD_RESET = "password_reset"
+    EMAIL_VERIFICATION = "email_verification"
+    TOKEN_REFRESH = "token_refresh"
+    ROLE_CHANGE = "role_change"
+    USER_UPDATE = "user_update"
+    LOGIN_FAILED = "login_failed"
 
 class User(Base):
     __tablename__ = "users"
@@ -32,3 +43,15 @@ class RefreshToken(Base):
     revoked = Column(Boolean, default=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Nullable for failed login attempts
+    log_type = Column(Enum(AuditLogType), nullable=False)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    details = Column(Text, nullable=True)  # JSON string with additional details
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
