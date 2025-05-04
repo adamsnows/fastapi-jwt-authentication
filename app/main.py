@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -10,6 +10,7 @@ from . import models, schemas, auth
 from .database import engine, get_db
 from .config import settings
 from .email import email_manager, create_email_verification_token, create_password_reset_token
+from .security import rate_limiter, brute_force_protection
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -26,6 +27,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.middleware("http")(rate_limiter)
 
 @app.get("/", tags=["Root"])
 async def root():
@@ -161,9 +164,27 @@ async def confirm_password_reset(reset_data: schemas.PasswordResetConfirm, db: S
 
 
 @app.post("/auth/login", response_model=schemas.Token, tags=["Authentication"])
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
     """Login to get access token"""
+    client_ip = request.client.host if request.client else "0.0.0.0"
+
+    is_locked, lock_time = brute_force_protection.is_locked_out(form_data.username)
+    if is_locked:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed login attempts. Try again in {lock_time} seconds.",
+            headers={"Retry-After": str(lock_time)}
+        )
+
     user = auth.authenticate_user(db, form_data.username, form_data.password)
+
+    login_success = user is not False
+    brute_force_protection.record_login_attempt(form_data.username, login_success, client_ip)
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -179,7 +200,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
     refresh_token, _ = auth.create_refresh_token(user.id, db)
 
-    return {"access_token": access_token, "token_type": "bearer", "expires_at": expires_at, "refresh_token": refresh_token}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_at": expires_at,
+        "refresh_token": refresh_token
+    }
 
 
 @app.post("/auth/refresh", response_model=schemas.Token, tags=["Authentication"])
