@@ -124,7 +124,7 @@ def test_refresh_token_endpoint(client, test_user):
     assert login_response.status_code == status.HTTP_200_OK
     login_data = login_response.json()
     refresh_token = login_data["refresh_token"]
-    
+
     # Use refresh token to get new access token
     refresh_response = client.post(
         "/auth/refresh",
@@ -162,7 +162,7 @@ def test_logout_endpoint(client, test_user):
         }
     )
     refresh_token = login_response.json()["refresh_token"]
-    
+
     # Logout
     logout_response = client.post(
         "/auth/logout",
@@ -171,7 +171,7 @@ def test_logout_endpoint(client, test_user):
         }
     )
     assert logout_response.status_code == status.HTTP_200_OK
-    
+
     # Try to use the revoked refresh token
     refresh_response = client.post(
         "/auth/refresh",
@@ -191,25 +191,25 @@ def test_logout_all_endpoint(client, test_user):
     )
     token1 = login1.json()["access_token"]
     refresh_token1 = login1.json()["refresh_token"]
-    
+
     login2 = client.post(
         "/auth/login",
         data={"username": "testuser", "password": "testpassword"}
     )
     refresh_token2 = login2.json()["refresh_token"]
-    
+
     # Logout from all devices
     headers = {"Authorization": f"Bearer {token1}"}
     logout_response = client.post("/auth/logout/all", headers=headers)
     assert logout_response.status_code == status.HTTP_200_OK
-    
+
     # Try to use the first refresh token
     refresh1 = client.post(
         "/auth/refresh",
         json={"refresh_token": refresh_token1}
     )
     assert refresh1.status_code == status.HTTP_401_UNAUTHORIZED
-    
+
     # Try to use the second refresh token
     refresh2 = client.post(
         "/auth/refresh",
@@ -222,7 +222,7 @@ def test_verify_email_valid_token(client, test_unverified_user, monkeypatch):
     """Test email verification with a valid token"""
     # Create a verification token
     token = create_email_verification_token(test_unverified_user.username)
-    
+
     # Verify email
     response = client.post(
         "/auth/verify-email",
@@ -255,7 +255,7 @@ def test_password_reset_confirm_valid_token(client, test_user, monkeypatch):
     """Test confirming a password reset with valid token"""
     # Create a password reset token
     token = create_password_reset_token(test_user.username)
-    
+
     # Reset password
     response = client.post(
         "/auth/password-reset/confirm",
@@ -266,7 +266,7 @@ def test_password_reset_confirm_valid_token(client, test_user, monkeypatch):
     )
     assert response.status_code == status.HTTP_200_OK
     assert "Password has been reset successfully" in response.json()["message"]
-    
+
     # Check if login works with new password
     login_response = client.post(
         "/auth/login",
@@ -302,7 +302,7 @@ def test_resend_verification_email(client, test_unverified_user):
         }
     )
     token = login_response.json()["access_token"]
-    
+
     # Resend verification email
     headers = {"Authorization": f"Bearer {token}"}
     response = client.post("/auth/resend-verification", headers=headers)

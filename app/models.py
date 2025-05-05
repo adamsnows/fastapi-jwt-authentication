@@ -47,11 +47,10 @@ class RefreshToken(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Nullable for failed login attempts
     log_type = Column(Enum(AuditLogType), nullable=False)
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
-    details = Column(Text, nullable=True)  # JSON string with additional details
+    details = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)

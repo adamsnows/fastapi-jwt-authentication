@@ -76,7 +76,7 @@ class AuditLogCreate(AuditLogBase):
 class AuditLogResponse(AuditLogBase):
     id: int
     created_at: datetime
-    
+
     class Config:
         orm_mode = True
 

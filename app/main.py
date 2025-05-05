@@ -98,7 +98,7 @@ async def register(
 
 @app.post("/auth/verify-email", status_code=status.HTTP_200_OK, tags=["Authentication"])
 async def verify_email(
-    verification_data: schemas.EmailVerificationRequest, 
+    verification_data: schemas.EmailVerificationRequest,
     request: Request,
     db: Session = Depends(get_db)
 ):
@@ -174,7 +174,7 @@ async def request_password_reset(
 
 @app.post("/auth/password-reset/confirm", status_code=status.HTTP_200_OK, tags=["Authentication"])
 async def confirm_password_reset(
-    reset_data: schemas.PasswordResetConfirm, 
+    reset_data: schemas.PasswordResetConfirm,
     request: Request,
     db: Session = Depends(get_db)
 ):
@@ -220,7 +220,7 @@ async def confirm_password_reset(
 @app.post("/auth/login", response_model=schemas.Token, tags=["Authentication"])
 async def login(
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(), 
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
     """Login to get access token"""
@@ -271,16 +271,16 @@ async def login(
     )
 
     return {
-        "access_token": access_token, 
-        "token_type": "bearer", 
-        "expires_at": expires_at, 
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_at": expires_at,
         "refresh_token": refresh_token
     }
 
 
 @app.post("/auth/refresh", response_model=schemas.Token, tags=["Authentication"])
 async def refresh_token(
-    refresh_req: schemas.RefreshRequest, 
+    refresh_req: schemas.RefreshRequest,
     request: Request,
     db: Session = Depends(get_db)
 ):
@@ -332,7 +332,7 @@ async def refresh_token(
 
 @app.post("/auth/logout", status_code=status.HTTP_200_OK, tags=["Authentication"])
 async def logout(
-    refresh_req: schemas.RefreshRequest, 
+    refresh_req: schemas.RefreshRequest,
     request: Request,
     db: Session = Depends(get_db)
 ):
@@ -360,7 +360,7 @@ async def logout(
 @app.post("/auth/logout/all", status_code=status.HTTP_200_OK, tags=["Authentication"])
 async def logout_all(
     request: Request,
-    current_user = Depends(auth.get_current_active_user), 
+    current_user = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """Logout from all devices by revoking all refresh tokens"""
@@ -564,29 +564,26 @@ async def get_audit_logs(
 ):
     """Get audit logs with optional filtering (Admin only)"""
     query = db.query(models.AuditLog)
-    
-    # Apply filters if provided
+
     if user_id:
         query = query.filter(models.AuditLog.user_id == user_id)
-    
+
     if log_type:
         query = query.filter(models.AuditLog.log_type == log_type)
-    
+
     if start_date:
         query = query.filter(models.AuditLog.created_at >= start_date)
-    
+
     if end_date:
         query = query.filter(models.AuditLog.created_at <= end_date)
-    
+
     if ip_address:
         query = query.filter(models.AuditLog.ip_address == ip_address)
-    
-    # Order by created_at descending (newest first)
+
     query = query.order_by(models.AuditLog.created_at.desc())
-    
-    # Apply pagination
+
     audit_logs = query.offset(skip).limit(limit).all()
-    
+
     return audit_logs
 
 
@@ -602,32 +599,28 @@ async def get_user_audit_logs(
     current_user = Depends(auth.admin_only)
 ):
     """Get audit logs for a specific user (Admin only)"""
-    # First check if user exists
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     query = db.query(models.AuditLog).filter(models.AuditLog.user_id == user_id)
-    
-    # Apply additional filters
+
     if log_type:
         query = query.filter(models.AuditLog.log_type == log_type)
-    
+
     if start_date:
         query = query.filter(models.AuditLog.created_at >= start_date)
-    
+
     if end_date:
         query = query.filter(models.AuditLog.created_at <= end_date)
-    
-    # Order by created_at descending (newest first)
+
     query = query.order_by(models.AuditLog.created_at.desc())
-    
-    # Apply pagination
+
     audit_logs = query.offset(skip).limit(limit).all()
-    
+
     return audit_logs
 
 
@@ -650,8 +643,8 @@ async def delete_audit_log(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Audit log entry not found"
         )
-    
+
     db.delete(db_log)
     db.commit()
-    
+
     return None
