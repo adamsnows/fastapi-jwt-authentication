@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Callable, Tuple
 from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import OAuth2PasswordBearer
@@ -39,7 +39,7 @@ def authenticate_user(db: Session, username: str, password: str):
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create a JWT access token"""
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt, int(expire.timestamp())
@@ -48,7 +48,7 @@ def create_refresh_token(user_id: int, db: Session) -> Tuple[str, datetime]:
     """Create a new refresh token for a user"""
     token_value = secrets.token_hex(32)
 
-    expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
     refresh_token = models.RefreshToken(
         token=token_value,
@@ -67,7 +67,7 @@ def get_refresh_token(token: str, db: Session):
     return db.query(models.RefreshToken).filter(
         models.RefreshToken.token == token,
         models.RefreshToken.revoked == False,
-        models.RefreshToken.expires_at > datetime.utcnow()
+        models.RefreshToken.expires_at > datetime.now(timezone.utc)
     ).first()
 
 def revoke_refresh_token(token: str, db: Session):

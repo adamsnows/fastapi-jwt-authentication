@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from .models import UserRole, AuditLogType
@@ -22,8 +22,7 @@ class UserResponse(UserBase):
     email_verified: bool
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Token(BaseModel):
     access_token: str
@@ -47,8 +46,7 @@ class RefreshTokenResponse(BaseModel):
     user_id: int
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class RefreshRequest(BaseModel):
     refresh_token: str
@@ -77,8 +75,7 @@ class AuditLogResponse(AuditLogBase):
     id: int
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AuditLogFilter(BaseModel):
     user_id: Optional[int] = None

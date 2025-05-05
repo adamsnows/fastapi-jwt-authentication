@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -29,9 +29,9 @@ class EmailManager:
         )
         self.fm = FastMail(self.conf)
 
-        # Store sent emails for testing
+        # store sent emails for testing
         self.test_emails = []
-        # Check if running in test mode
+        # check if running in test mode
         self.test_mode = os.environ.get("TESTING") == "True"
 
     async def send_email(
@@ -42,7 +42,7 @@ class EmailManager:
         template_name: str
     ) -> None:
         """Send email asynchronously"""
-        # In test mode, just store the email instead of sending it
+        # in test mode, just store the email instead of sending it
         if self.test_mode:
             self.test_emails.append({
                 "email_to": email_to,
@@ -108,7 +108,7 @@ email_manager = EmailManager()
 
 def create_email_verification_token(username: str) -> str:
     """Create a JWT token for email verification"""
-    expire = datetime.utcnow() + timedelta(hours=settings.EMAIL_TOKEN_EXPIRE_HOURS)
+    expire = datetime.now(timezone.utc) + timedelta(hours=settings.EMAIL_TOKEN_EXPIRE_HOURS)
     to_encode = {"sub": username, "exp": expire, "type": "email_verification"}
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
@@ -116,7 +116,7 @@ def create_email_verification_token(username: str) -> str:
 
 def create_password_reset_token(username: str) -> str:
     """Create a JWT token for password reset"""
-    expire = datetime.utcnow() + timedelta(hours=settings.RESET_TOKEN_EXPIRE_HOURS)
+    expire = datetime.now(timezone.utc) + timedelta(hours=settings.RESET_TOKEN_EXPIRE_HOURS)
     to_encode = {"sub": username, "exp": expire, "type": "password_reset"}
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
