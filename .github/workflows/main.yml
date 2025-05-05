@@ -25,7 +25,8 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest --cov=app tests/
+          # Set PYTHONPATH to include the current directory
+          PYTHONPATH=$PYTHONPATH:$(pwd) pytest --cov=app tests/
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v1
