@@ -180,7 +180,7 @@ class BruteForceProtection:
         current_time = time.time()
 
         self.locked_out = {user: expiry for user, expiry in self.locked_out.items()
-                          if expiry > current_time}
+                           if expiry > current_time}
 
         cutoff_time = current_time - self.lockout_time
         for username in list(self.failed_attempts.keys()):
@@ -188,6 +188,7 @@ class BruteForceProtection:
                 a for a in self.failed_attempts[username]
                 if a.timestamp > cutoff_time
             ]
+            if not self.failed_attempts[username]:
                 del self.failed_attempts[username]
 
 
