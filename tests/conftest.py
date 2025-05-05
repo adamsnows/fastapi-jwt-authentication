@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.database import Base, get_db
-from app.models import User
+from app.models import User, UserRole
 from app.auth import get_password_hash
 
 TEST_DB_URL = "sqlite:///./test.db"
@@ -70,7 +70,9 @@ def test_user(db_session):
         username="testuser",
         email="test@example.com",
         hashed_password=hashed_password,
-        is_active=True
+        is_active=True,
+        email_verified=True,
+        role=UserRole.USER
     )
     db_session.add(user)
     db_session.commit()
@@ -87,9 +89,47 @@ def test_admin(db_session):
         email="admin@example.com",
         hashed_password=hashed_password,
         is_active=True,
-        is_admin=True
+        is_admin=True,
+        email_verified=True,
+        role=UserRole.ADMIN
     )
     db_session.add(admin)
     db_session.commit()
     db_session.refresh(admin)
     return admin
+
+
+@pytest.fixture(scope="function")
+def test_unverified_user(db_session):
+    """Create an unverified test user"""
+    hashed_password = get_password_hash("testpassword")
+    user = User(
+        username="unverified",
+        email="unverified@example.com",
+        hashed_password=hashed_password,
+        is_active=True,
+        email_verified=False,
+        role=UserRole.USER
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+def test_guest_user(db_session):
+    """Create a guest user with limited permissions"""
+    hashed_password = get_password_hash("guestpassword")
+    user = User(
+        username="guest",
+        email="guest@example.com",
+        hashed_password=hashed_password,
+        is_active=True,
+        email_verified=True,
+        role=UserRole.GUEST
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
