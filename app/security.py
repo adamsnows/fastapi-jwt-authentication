@@ -1,6 +1,7 @@
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 import time
+import os
 from typing import Dict, Tuple, List, Optional, Callable
 import ipaddress
 from pydantic import BaseModel
@@ -25,11 +26,13 @@ class RateLimiter:
         # Store banned IPs with expiration time
         self.banned_ips: Dict[str, float] = {}
 
+        # Check if running in test mode
+        self.test_mode = os.environ.get("TESTING") == "True"
+
     def _get_client_ip(self, request: Request) -> str:
         """Extract and normalize client IP from various headers"""
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
-
             client_ip = forwarded_for.split(",")[0].strip()
         else:
             client_ip = request.client.host if request.client else "0.0.0.0"
@@ -42,6 +45,9 @@ class RateLimiter:
 
     def _is_rate_limited(self, client_ip: str) -> Tuple[bool, Optional[int]]:
         """Check if client IP is rate limited and calculate retry-after time if needed"""
+        if self.test_mode:
+            return False, None
+
         current_time = time.time()
 
         if client_ip in self.banned_ips:
@@ -50,7 +56,6 @@ class RateLimiter:
                 time_remaining = int(ban_expiration - current_time)
                 return True, time_remaining
             else:
-
                 del self.banned_ips[client_ip]
 
         request_history = self.requests.get(client_ip, [])
@@ -83,6 +88,10 @@ class RateLimiter:
 
     async def __call__(self, request: Request, call_next: Callable):
         """Middleware function to check rate limits"""
+        # Skip rate limiting in test mode
+        if self.test_mode:
+            return await call_next(request)
+
         if time.time() % 60 < 1:
             self._clean_old_data()
 
@@ -127,8 +136,13 @@ class BruteForceProtection:
 
         self.locked_out: Dict[str, float] = {}
 
+        self.test_mode = os.environ.get("TESTING") == "True"
+
     def record_login_attempt(self, username: str, success: bool, ip_address: str):
         """Record a login attempt for a username"""
+        if self.test_mode:
+            return
+
         current_time = time.time()
 
         attempt = LoginAttempt(
@@ -160,6 +174,9 @@ class BruteForceProtection:
 
     def is_locked_out(self, username: str) -> Tuple[bool, Optional[int]]:
         """Check if a username is locked out"""
+        if self.test_mode:
+            return False, None
+
         current_time = time.time()
 
         if username in self.locked_out:

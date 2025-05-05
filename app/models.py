@@ -50,6 +50,7 @@ class AuditLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     log_type = Column(Enum(AuditLogType), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
     details = Column(Text, nullable=True)

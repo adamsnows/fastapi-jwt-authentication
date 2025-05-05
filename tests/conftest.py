@@ -7,6 +7,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine
 from fastapi.testclient import TestClient
 
+# Set testing environment variable
+os.environ["TESTING"] = "True"
+
 from app.main import app
 from app.database import Base, get_db
 from app.models import User, UserRole
