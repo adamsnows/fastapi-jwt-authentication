@@ -18,6 +18,10 @@ class AuditLogType(str, enum.Enum):
     ROLE_CHANGE = "role_change"
     USER_UPDATE = "user_update"
     LOGIN_FAILED = "login_failed"
+    GET_DEACTIVATED_USERS = "get_deactivated_users"
+    ACTIVATE_USER = "activate_user"
+    DEACTIVATE_USER = "deactivate_user"
+    UPDATE_ROLE = "update_role"
 
 class User(Base):
     __tablename__ = "users"

@@ -1,6 +1,6 @@
 import pytest
 from fastapi import status
-from app.models import AuditLogType
+from app.models import AuditLogType, AuditLog
 
 def test_audit_logs_access(client, test_admin):
     """Test that admin can access audit logs"""
@@ -56,11 +56,11 @@ def test_audit_logs_filtering(client, test_admin, test_user):
     logs = response.json()
     assert all(log["user_id"] == test_user.id for log in logs)
 
-    # filter by log_type
-    response = client.get(f"/audit-logs?log_type={AuditLogType.LOGIN}", headers=headers)
+    # filter by log_type - using string value instead of enum object
+    response = client.get(f"/audit-logs?log_type=login", headers=headers)
     assert response.status_code == status.HTTP_200_OK
     logs = response.json()
-    assert all(log["log_type"] == AuditLogType.LOGIN for log in logs)
+    assert all(log["log_type"] == "login" for log in logs)
 
 
 def test_user_specific_audit_logs(client, test_admin, test_user):
@@ -142,7 +142,7 @@ def test_delete_audit_log(client, test_admin):
 def test_login_creates_audit_log(client, test_user, db_session):
     """Test that login creates an audit log entry"""
     # get current log count
-    logs_before = db_session.query(AuditLogType).count()
+    logs_before = db_session.query(AuditLog).count()
 
     # login
     client.post(
@@ -154,5 +154,5 @@ def test_login_creates_audit_log(client, test_user, db_session):
     )
 
     # check log count increased
-    logs_after = db_session.query(AuditLogType).count()
+    logs_after = db_session.query(AuditLog).count()
     assert logs_after > logs_before

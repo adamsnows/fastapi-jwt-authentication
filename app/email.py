@@ -29,6 +29,11 @@ class EmailManager:
         )
         self.fm = FastMail(self.conf)
 
+        # Store sent emails for testing
+        self.test_emails = []
+        # Check if running in test mode
+        self.test_mode = os.environ.get("TESTING") == "True"
+
     async def send_email(
         self,
         email_to: List[EmailStr],
@@ -37,6 +42,16 @@ class EmailManager:
         template_name: str
     ) -> None:
         """Send email asynchronously"""
+        # In test mode, just store the email instead of sending it
+        if self.test_mode:
+            self.test_emails.append({
+                "email_to": email_to,
+                "subject": subject,
+                "body": body,
+                "template_name": template_name
+            })
+            return
+
         message = MessageSchema(
             subject=subject,
             recipients=email_to,
